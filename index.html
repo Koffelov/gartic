@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ec4899'><path d='M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 0 0-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 0 0 0-1.41z'/></svg>">
+<title>Gartic Show</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;min-height:100vh}
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex}
+
+/* ── SETUP ── */
+#screen-setup{flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+.logo{margin-bottom:6px}
+.title{font-size:2.8rem;font-weight:900;background:linear-gradient(135deg,#ec4899,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;letter-spacing:1px}
+.sub{color:#636366;font-size:.95rem;margin-bottom:28px}
+.card{background:#18181b;border:2px solid #2a2a2d;border-radius:16px;padding:24px;width:100%;max-width:520px;text-align:left}
+.field{margin-bottom:14px}
+.field label{display:block;color:#888;font-size:.75rem;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select{width:100%;padding:11px 14px;border:2px solid #2a2a2d;border-radius:10px;background:#0e0e10;color:#eee;font-size:.95rem;font-family:inherit;outline:none}
+.field input:focus,.field select:focus{border-color:#ec4899}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.packs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pack-chip{padding:8px 14px;border:2px solid #2a2a2d;border-radius:999px;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .15s;color:#aaa;user-select:none}
+.pack-chip.on{border-color:#ec4899;background:rgba(236,72,153,.12);color:#ec4899}
+.btn{padding:13px 28px;border:none;border-radius:12px;font-size:1rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s}
+.btn-main{background:linear-gradient(135deg,#ec4899,#a855f7);color:#fff;width:100%;margin-top:8px}
+.btn-main:hover{transform:scale(1.02);box-shadow:0 0 25px rgba(236,72,153,.4)}
+.hint{color:#636366;font-size:.78rem;margin-top:16px;line-height:1.6;text-align:center}
+
+/* ── GAME ── */
+#screen-game{flex-direction:column;padding:12px;gap:10px}
+.g-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.g-badge{display:flex;align-items:center;gap:7px;background:#18181b;border:2px solid #2a2a2d;border-radius:12px;padding:8px 14px;font-weight:700;font-size:.9rem}
+.g-badge .gb-num{color:#ec4899;font-size:1.1rem}
+.g-timer{font-size:1.4rem;font-weight:900;min-width:54px;text-align:center}
+.g-timer.low{color:#ff4444;animation:pulse .6s infinite alternate}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.12)}}
+.g-spacer{flex:1}
+.g-btn{background:#18181b;border:2px solid #2a2a2d;color:#bbb;border-radius:10px;padding:8px 14px;font-size:.82rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:6px}
+.g-btn:hover{border-color:#ec4899;color:#fff}
+.g-btn svg{width:15px;height:15px;fill:currentColor}
+.g-btn.danger:hover{border-color:#ef4444;color:#ef4444}
+
+/* secret word box */
+.secret{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#2a0e22,#1a0814);border:2px solid #ec4899;border-radius:12px;padding:10px 16px}
+.secret-warn{font-size:.66rem;color:#ec4899;text-transform:uppercase;letter-spacing:.5px;font-weight:700;line-height:1.3;max-width:150px}
+.secret-word{font-size:1.6rem;font-weight:900;letter-spacing:2px;flex:1;transition:filter .2s}
+.secret.hidden .secret-word{filter:blur(10px)}
+.secret-eye{background:rgba(255,255,255,.06);border:none;color:#fff;width:34px;height:34px;border-radius:8px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.secret-eye svg{width:18px;height:18px;fill:currentColor}
+
+.g-main{display:flex;gap:10px;flex:1;min-height:0}
+.canvas-wrap{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.canvas-box{flex:1;background:#fff;border-radius:14px;position:relative;overflow:hidden;min-height:300px}
+#draw{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair;touch-action:none}
+.masked{text-align:center;font-size:1.5rem;font-weight:900;letter-spacing:8px;color:#a855f7;font-family:monospace;min-height:30px}
+
+/* tools */
+.tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#18181b;border:2px solid #2a2a2d;border-radius:12px;padding:10px}
+.colors{display:flex;gap:5px;flex-wrap:wrap}
+.color{width:26px;height:26px;border-radius:50%;cursor:pointer;border:2px solid rgba(255,255,255,.15);transition:transform .1s}
+.color:hover{transform:scale(1.15)}
+.color.on{border-color:#fff;box-shadow:0 0 0 2px #ec4899}
+.tool-sep{width:1px;height:28px;background:#2a2a2d}
+.sizes{display:flex;gap:6px;align-items:center}
+.size-dot{border-radius:50%;background:#888;cursor:pointer;transition:all .1s}
+.size-dot.on{background:#ec4899}
+.tool-btn{background:#0e0e10;border:2px solid #2a2a2d;color:#bbb;border-radius:8px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.tool-btn:hover{border-color:#ec4899;color:#fff}
+.tool-btn.on{border-color:#ec4899;background:rgba(236,72,153,.12);color:#ec4899}
+.tool-btn svg{width:18px;height:18px;fill:currentColor}
+
+/* side panel */
+.side{width:300px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}
+.panel{background:#18181b;border:2px solid #2a2a2d;border-radius:12px;padding:12px;display:flex;flex-direction:column;min-height:0}
+.panel h3{font-size:.72rem;color:#888;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;display:flex;justify-content:space-between}
+.guesses{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;min-height:120px}
+.guess{font-size:.85rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.03);word-break:break-word}
+.guess .gn{font-weight:700}
+.guess.correct{background:rgba(34,197,94,.15);border:1px solid #22c55e;color:#22c55e;font-weight:700}
+.guess.close{background:rgba(249,202,36,.12)}
+.lb{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+.lb-row{display:flex;align-items:center;gap:8px;font-size:.85rem;padding:5px 8px;border-radius:8px;background:rgba(255,255,255,.03)}
+.lb-rank{width:20px;font-weight:900;color:#666;text-align:center;flex-shrink:0}
+.lb-row:nth-child(1) .lb-rank{color:#ffd700}
+.lb-row:nth-child(2) .lb-rank{color:#c0c0c0}
+.lb-row:nth-child(3) .lb-rank{color:#cd7f32}
+.lb-name{flex:1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lb-pts{color:#ec4899;font-weight:900}
+
+/* round result overlay */
+.result{position:fixed;inset:0;z-index:120;background:rgba(14,14,16,.94);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:20px}
+.result.show{display:flex;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.result-label{font-size:1rem;color:#888;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px}
+.result-word{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#ec4899,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
+.result-winner{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+.result-winner b{color:#22c55e}
+.result-pts{color:#ec4899;font-weight:900;font-size:1.1rem;margin-bottom:24px}
+.result-next{color:#666;font-size:.9rem}
+
+/* final */
+.podium{display:flex;align-items:flex-end;gap:14px;justify-content:center;margin:24px 0}
+.pod{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pod-name{font-weight:900;font-size:1.1rem}
+.pod-bar{width:90px;border-radius:12px 12px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10px;font-size:1.8rem;font-weight:900;color:#000}
+.pod-pts{color:#ec4899;font-weight:900}
+.pod1 .pod-bar{height:160px;background:linear-gradient(180deg,#ffd700,#f0932b)}
+.pod2 .pod-bar{height:120px;background:linear-gradient(180deg,#e0e0e0,#a0a0a0)}
+.pod3 .pod-bar{height:90px;background:linear-gradient(180deg,#cd7f32,#a05a1f)}
+
+.tg-w{position:fixed;top:10px;right:10px;z-index:60;display:flex;align-items:center;gap:6px;padding:7px 12px;background:rgba(24,24,27,.85);backdrop-filter:blur(10px);border:1px solid #2a2a2d;border-radius:10px;text-decoration:none;color:#efeff1;font-size:.78rem;font-weight:600}
+.tg-w:hover{border-color:#2AABEE}
+.watermark{position:fixed;bottom:8px;right:12px;font-size:1rem;color:rgba(255,255,255,.05);font-weight:900;pointer-events:none}
+
+@media(max-width:820px){.g-main{flex-direction:column}.side{width:100%;flex-direction:row}.panel{flex:1}}
+</style>
+</head>
+<body>
+<script>(async()=>{try{const r=await fetch('https://magnetic-stud-80905.upstash.io/get/admin%3Asites',{headers:{Authorization:'Bearer ggAAAAAAATwJAAIgcDGFhji2ubUH7mvvgwz-fXEebOVFx8PCvdGn_61dAUDmPg'}});const d=await r.json();const s=JSON.parse(d.result||'{}');if(s['Gartic Show']===false){document.body.innerHTML='<div style="position:fixed;inset:0;background:#111;color:#fff;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;flex-direction:column;gap:12px;z-index:99999"><h1 style="margin:0;font-size:1.5rem">Сайт временно отключён</h1><p style="color:#888;margin:0">Администратор приостановил работу сайта</p></div>';document.body.style.overflow='hidden'}}catch(e){}})();</script>
+<script src="https://quizkdrsh.vercel.app/embed.js?site=Gartic+Show"></script>
+
+<a class="tg-w" href="https://t.me/mypodvalq" target="_blank" rel="noopener">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.53 8.15l-1.8 8.47c-.13.6-.48.75-.98.47l-2.72-2-1.31 1.26c-.15.15-.27.27-.55.27l.2-2.77 5.02-4.54c.22-.2-.05-.3-.34-.12l-6.2 3.9-2.67-.83c-.58-.18-.59-.58.12-.86l10.44-4.02c.48-.18.91.12.75.86z"/></svg>
+  Telegram
+</a>
+<div class="watermark">vibecoded by ishakkodolov_kdrsh</div>
+
+<!-- ── SETUP ── -->
+<div id="screen-setup" class="screen active">
+  <div class="logo"><svg width="76" height="76" viewBox="0 0 24 24" fill="#ec4899"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 0 0-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 0 0 0-1.41z"/></svg></div>
+  <div class="title">GARTIC SHOW</div>
+  <div class="sub">Рисуй — чат угадывает слово в чате</div>
+  <div class="card">
+    <div class="field">
+      <label>Twitch-канал</label>
+      <input type="text" id="s-channel" placeholder="имя_канала" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Раундов</label>
+        <input type="number" id="s-rounds" value="8" min="1" max="50">
+      </div>
+      <div class="field">
+        <label>Время на раунд (сек)</label>
+        <input type="number" id="s-time" value="90" min="20" max="300">
+      </div>
+    </div>
+    <div class="field">
+      <label>Категории слов</label>
+      <div class="packs" id="packs"></div>
+    </div>
+    <button class="btn btn-main" id="btn-start">Начать игру</button>
+  </div>
+  <p class="hint">Ты рисуешь загаданное слово на холсте. Зрители пишут догадки в Twitch-чат.<br>Кто первый угадал — получает очки (быстрее = больше).<br><b style="color:#ec4899">Секретное слово показано только тебе — спрячь ту область в OBS!</b></p>
+</div>
+
+<!-- ── GAME ── -->
+<div id="screen-game" class="screen">
+  <div class="g-top">
+    <div class="g-badge">Раунд <span class="gb-num" id="g-round">1</span>/<span id="g-rounds">8</span></div>
+    <div class="g-timer" id="g-timer">90</div>
+    <div class="secret hidden" id="secret">
+      <div class="secret-warn">Только тебе!<br>Скрой в OBS</div>
+      <div class="secret-word" id="secret-word">—</div>
+      <button class="secret-eye" id="secret-eye" title="Показать/скрыть">
+        <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      </button>
+    </div>
+    <div class="g-spacer"></div>
+    <button class="g-btn" id="btn-skip"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>Пропустить</button>
+    <button class="g-btn danger" id="btn-reset"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Сброс</button>
+  </div>
+
+  <div class="g-main">
+    <div class="canvas-wrap">
+      <div class="canvas-box"><canvas id="draw"></canvas></div>
+      <div class="masked" id="masked"></div>
+      <div class="tools">
+        <div class="colors" id="colors"></div>
+        <div class="tool-sep"></div>
+        <div class="sizes" id="sizes"></div>
+        <div class="tool-sep"></div>
+        <button class="tool-btn" id="t-brush" title="Кисть"><svg viewBox="0 0 24 24"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34a.996.996 0 0 0-1.41 0L9 12.25 11.75 15l8.96-8.96a.996.996 0 0 0 0-1.41z"/></svg></button>
+        <button class="tool-btn" id="t-eraser" title="Ластик"><svg viewBox="0 0 24 24"><path d="M16.24 3.56l4.95 4.94c.78.79.78 2.05 0 2.84L12 20.53a4.008 4.008 0 0 1-5.66 0L2.81 17c-.78-.79-.78-2.05 0-2.84l10.6-10.6c.79-.78 2.05-.78 2.83 0zM4.22 15.58l3.54 3.53c.78.79 2.04.79 2.83 0l3.53-3.53-4.95-4.95-4.95 4.95z"/></svg></button>
+        <button class="tool-btn" id="t-undo" title="Отменить"><svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg></button>
+        <button class="tool-btn" id="t-clear" title="Очистить"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel" style="flex:1.4">
+        <h3>Догадки <span id="guess-count" style="color:#ec4899">0</span></h3>
+        <div class="guesses" id="guesses"></div>
+      </div>
+      <div class="panel">
+        <h3>Топ угадавших</h3>
+        <div class="lb" id="lb"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- round result -->
+<div class="result" id="result">
+  <div class="result-label" id="r-label">Раунд окончен</div>
+  <div class="result-word" id="r-word">слово</div>
+  <div class="result-winner" id="r-winner"></div>
+  <div class="result-pts" id="r-pts"></div>
+  <div class="result-next" id="r-next"></div>
+</div>
+
+<script>
+/* ── WORD PACKS ── */
+const PACKS={
+  'Общее':['дом','солнце','машина','дерево','кот','собака','цветок','звезда','рыба','книга','телефон','очки','часы','зонт','ключ','ножницы','лампа','стул','окно','мяч','шар','снеговик','радуга','молния','сердце','корабль','ракета','робот','призрак','корона'],
+  'Еда':['пицца','банан','яблоко','бургер','мороженое','торт','хлеб','сыр','яйцо','арбуз','клубника','грибы','морковь','перец','сосиска','блин','пельмени','суши','кофе','чай','конфета','пончик','чипсы','лимон','виноград','ананас','картошка','помидор','капуста','шашлык'],
+  'Животные':['слон','жираф','лев','тигр','медведь','заяц','лиса','волк','панда','обезьяна','пингвин','сова','орёл','акула','кит','осьминог','краб','бабочка','пчела','паук','улитка','черепаха','крокодил','змея','лягушка','ёжик','белка','олень','зебра','кенгуру'],
+  'Предметы':['компьютер','наушники','камера','микрофон','гитара','барабан','велосипед','самолёт','поезд','автобус','лодка','топор','молоток','пила','лопата','метла','чемодан','рюкзак','кошелёк','перчатки','шляпа','ботинок','футболка','штаны','кольцо','браслет','зеркало','свеча','фонарик','градусник'],
+  'Профессии':['врач','повар','пожарный','полицейский','учитель','пилот','моряк','солдат','строитель','художник','музыкант','клоун','король','рыцарь','пират','космонавт','фокусник','шахтёр','садовник','парикмахер','фотограф','актёр','певец','боксёр','футболист','хоккеист','дворник','почтальон','судья','ниндзя'],
+  'Мемы и игры':['minecraft','among us','стример','донат','чатик','банан','тролль','нуб','читер','босс','лут','скин','краш','лагает','капс','бан','эмодзи','подписка','вебка','мем','рофл','краб','дудос','гриф','спавн','респавн','хедшот','комбо','ачивка','тильт']
+};
+let selectedPacks=Object.keys(PACKS);
+
+/* ── STATE ── */
+let ws=null,channel='',rounds=8,roundTime=90;
+let round=0,curWord='',masked=[],revealOrder=[];
+let timeLeft=0,timer=null,revealTimer=null,roundActive=false;
+let solvedBy=null,scores=new Map(),guessCount=0;
+let wordQueue=[];
+const $=id=>document.getElementById(id);
+
+/* build packs UI */
+const packsEl=$('packs');
+Object.keys(PACKS).forEach(p=>{
+  const c=document.createElement('div');
+  c.className='pack-chip on';c.textContent=p;
+  c.onclick=()=>{c.classList.toggle('on');selectedPacks=[...packsEl.querySelectorAll('.pack-chip.on')].map(x=>x.textContent)};
+  packsEl.appendChild(c);
+});
+
+$('btn-start').onclick=startGame;
+$('s-channel').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
+
+function startGame(){
+  const ch=$('s-channel').value.trim().toLowerCase().replace(/^#/,'');
+  if(!ch)return;
+  if(!selectedPacks.length){alert('Выбери хотя бы одну категорию');return}
+  channel=ch;
+  rounds=Math.max(1,parseInt($('s-rounds').value)||8);
+  roundTime=Math.max(20,parseInt($('s-time').value)||90);
+  round=0;scores.clear();
+  buildQueue();
+  $('g-rounds').textContent=rounds;
+  showScreen('screen-game');
+  initCanvas();buildTools();
+  load7TVGlobal();loadBTTVGlobal();
+  connectChat(ch);
+  nextRound();
+}
+
+function buildQueue(){
+  let pool=[];
+  selectedPacks.forEach(p=>pool.push(...PACKS[p]));
+  // shuffle
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  wordQueue=pool;
+}
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));$(id).classList.add('active')}
+
+/* ── ROUND FLOW ── */
+function nextRound(){
+  round++;
+  if(round>rounds){finishGame();return}
+  if(!wordQueue.length)buildQueue();
+  curWord=wordQueue.shift();
+  masked=curWord.split('').map(c=>c===' '?' ':'_');
+  // reveal order — random positions (letters only)
+  revealOrder=curWord.split('').map((c,i)=>c===' '?-1:i).filter(i=>i>=0);
+  for(let i=revealOrder.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[revealOrder[i],revealOrder[j]]=[revealOrder[j],revealOrder[i]]}
+  solvedBy=null;guessCount=0;roundActive=true;
+  timeLeft=roundTime;
+
+  $('g-round').textContent=round;
+  $('secret-word').textContent=curWord.toUpperCase();
+  $('guesses').innerHTML='';
+  $('guess-count').textContent='0';
+  updateMasked();
+  clearCanvas();
+  $('g-timer').textContent=timeLeft;
+  $('g-timer').classList.remove('low');
+
+  twitchSay('🎨 Раунд '+round+'/'+rounds+'! Угадывай что я рисую — пиши в чат! ('+curWord.length+' букв, '+roundTime+'с)');
+
+  if(timer)clearInterval(timer);
+  timer=setInterval(tick,1000);
+  // letter reveals — spread across ~70% of round, keep ~1/3 hidden
+  scheduleReveals();
+}
+
+function scheduleReveals(){
+  if(revealTimer)clearInterval(revealTimer);
+  const toReveal=Math.max(0,revealOrder.length-Math.ceil(revealOrder.length/3)-1);
+  if(toReveal<=0)return;
+  const interval=Math.floor((roundTime*0.7/ (toReveal+1)))*1000;
+  let done=0;
+  revealTimer=setInterval(()=>{
+    if(!roundActive||done>=toReveal){clearInterval(revealTimer);return}
+    const pos=revealOrder[done];
+    masked[pos]=curWord[pos];
+    done++;
+    updateMasked();
+  },Math.max(2000,interval));
+}
+
+function tick(){
+  if(!roundActive)return;
+  timeLeft--;
+  $('g-timer').textContent=timeLeft;
+  if(timeLeft<=10)$('g-timer').classList.add('low');
+  if(timeLeft<=10&&timeLeft>0)SFX.tick();
+  if(timeLeft<=0){endRound(false)}
+}
+
+function updateMasked(){
+  $('masked').textContent=masked.join(' ');
+}
+
+function endRound(solved){
+  roundActive=false;
+  if(timer)clearInterval(timer);
+  if(revealTimer)clearInterval(revealTimer);
+
+  const r=$('result');
+  $('r-word').textContent=curWord.toUpperCase();
+  if(solved&&solvedBy){
+    $('r-label').textContent='Угадано!';
+    $('r-winner').innerHTML='Первым угадал <b>'+escHtml(solvedBy.name)+'</b>';
+    $('r-pts').textContent='+'+solvedBy.pts+' очков';
+    SFX.victory();
+  }else{
+    $('r-label').textContent='Никто не угадал';
+    $('r-winner').textContent='Слово было:';
+    $('r-pts').textContent='';
+    twitchSay('⏰ Время вышло! Слово было: '+curWord.toUpperCase());
+    SFX.timeout();
+  }
+  renderLB();
+  r.classList.add('show');
+
+  const last=round>=rounds;
+  let cd=last?4:5;
+  $('r-next').textContent=last?'Итоги через '+cd+'...':'Следующий раунд через '+cd+'...';
+  const adv=setInterval(()=>{
+    cd--;
+    if(cd<=0){clearInterval(adv);r.classList.remove('show');nextRound();return}
+    $('r-next').textContent=last?'Итоги через '+cd+'...':'Следующий раунд через '+cd+'...';
+  },1000);
+}
+
+function finishGame(){
+  if(timer)clearInterval(timer);
+  roundActive=false;
+  const top=[...scores.values()].sort((a,b)=>b.pts-a.pts).slice(0,3);
+  let html='<div class="logo"><svg width="64" height="64" viewBox="0 0 24 24" fill="#ffd700"><path d="M12 1l3.09 6.26L22 8.27l-5 4.87 1.18 6.88L12 16.77l-6.18 3.25L7 13.14 2 8.27l6.91-1.01L12 1z"/></svg></div>';
+  html+='<div class="result-label">Игра окончена</div>';
+  html+='<div class="result-word">Победители</div>';
+  html+='<div class="podium">';
+  const order=[1,0,2];
+  order.forEach(i=>{
+    if(!top[i])return;
+    const cls=i===0?'pod1':i===1?'pod2':'pod3';
+    html+='<div class="pod '+cls+'"><div class="pod-name">'+escHtml(top[i].name)+'</div><div class="pod-pts">'+top[i].pts+'</div><div class="pod-bar">'+(i+1)+'</div></div>';
+  });
+  html+='</div>';
+  html+='<button class="btn btn-main" style="max-width:280px" onclick="location.reload()">Новая игра</button>';
+  const r=$('result');
+  r.innerHTML=html;r.classList.add('show');
+  if(top[0])twitchSay('🏆 Игра окончена! Победитель: '+top[0].name+' с '+top[0].pts+' очками! 🎉');
+  [523,659,784,1047].forEach((f,i)=>setTimeout(()=>SFX.note(f),i*150));
+}
+
+/* ── GUESS HANDLING ── */
+function norm(s){return s.toLowerCase().trim().replace(/ё/g,'е').replace(/[^a-zа-я0-9 ]/g,'').replace(/\s+/g,' ')}
+
+function handleGuess(name,text,color){
+  if(!roundActive)return;
+  const g=norm(text);
+  if(!g)return;
+  guessCount++;
+  $('guess-count').textContent=guessCount;
+
+  const target=norm(curWord);
+  const correct=g===target;
+  const close=!correct&&(lev(g,target)===1||(target.length>3&&g.includes(target)));
+
+  addGuess(name,text,color,correct?'correct':(close?'close':''));
+
+  if(correct&&!solvedBy){
+    const pts=100+Math.round(timeLeft*5);
+    solvedBy={name,pts};
+    const s=scores.get(name.toLowerCase())||{name,pts:0};
+    s.pts+=pts;s.name=name;scores.set(name.toLowerCase(),s);
+    twitchSay('✅ @'+name+' угадал слово «'+curWord.toUpperCase()+'» за '+(roundTime-timeLeft)+'с! +'+pts+' очков 🎉');
+    SFX.correct();
+    endRound(true);
+  }else if(close){
+    twitchReply(name,'близко! 🔥');
+  }
+}
+
+function addGuess(name,text,color,cls){
+  const el=$('guesses');
+  const d=document.createElement('div');
+  d.className='guess'+(cls?' '+cls:'');
+  d.innerHTML='<span class="gn" style="color:'+(color||'#ec4899')+'">'+escHtml(name)+':</span> '+(cls==='correct'?'✓ угадал!':renderEmotes(text));
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+  if(el.children.length>60)el.removeChild(el.firstChild);
+}
+
+function renderLB(){
+  const top=[...scores.values()].sort((a,b)=>b.pts-a.pts).slice(0,8);
+  $('lb').innerHTML=top.map((s,i)=>'<div class="lb-row"><div class="lb-rank">'+(i+1)+'</div><div class="lb-name">'+escHtml(s.name)+'</div><div class="lb-pts">'+s.pts+'</div></div>').join('')||'<div style="color:#555;font-size:.8rem;text-align:center;padding:8px">пока пусто</div>';
+}
+
+/* Levenshtein (для "близко") */
+function lev(a,b){
+  const m=a.length,n=b.length;if(Math.abs(m-n)>1)return 99;
+  const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[m][n];
+}
+
+/* ── CANVAS DRAWING ── */
+let ctx,canvas,drawing=false,curColor='#000000',curSize=4,erasing=false,undoStack=[],lastX=0,lastY=0;
+function initCanvas(){
+  canvas=$('draw');ctx=canvas.getContext('2d');
+  resizeCanvas();
+  window.addEventListener('resize',resizeCanvas);
+  canvas.addEventListener('pointerdown',e=>{drawing=true;saveUndo();const p=pos(e);lastX=p.x;lastY=p.y;dot(p.x,p.y)});
+  canvas.addEventListener('pointermove',e=>{if(!drawing)return;const p=pos(e);line(lastX,lastY,p.x,p.y);lastX=p.x;lastY=p.y});
+  window.addEventListener('pointerup',()=>drawing=false);
+}
+function resizeCanvas(){
+  if(!canvas)return;
+  const snap=canvas.width?ctx.getImageData(0,0,canvas.width,canvas.height):null;
+  const r=canvas.getBoundingClientRect();
+  canvas.width=r.width;canvas.height=r.height;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.lineCap='round';ctx.lineJoin='round';
+  if(snap)try{ctx.putImageData(snap,0,0)}catch(e){}
+}
+function pos(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left)*(canvas.width/r.width),y:(e.clientY-r.top)*(canvas.height/r.height)}}
+function dot(x,y){ctx.fillStyle=erasing?'#fff':curColor;ctx.beginPath();ctx.arc(x,y,(erasing?curSize*2.5:curSize)/2,0,7);ctx.fill()}
+function line(x1,y1,x2,y2){ctx.strokeStyle=erasing?'#fff':curColor;ctx.lineWidth=erasing?curSize*2.5:curSize;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+function saveUndo(){try{undoStack.push(canvas.toDataURL());if(undoStack.length>25)undoStack.shift()}catch(e){}}
+function undo(){if(!undoStack.length)return;const img=new Image();img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0)};img.src=undoStack.pop()}
+function clearCanvas(){if(!ctx)return;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);undoStack=[]}
+
+const DRAW_COLORS=['#000000','#ffffff','#7f7f7f','#ef4444','#f97316','#facc15','#22c55e','#14b8a6','#3b82f6','#1e3a8a','#a855f7','#ec4899','#92400e','#fcd5b5'];
+const SIZES=[2,4,8,16];
+function buildTools(){
+  const cw=$('colors');cw.innerHTML='';
+  DRAW_COLORS.forEach((c,i)=>{
+    const el=document.createElement('div');el.className='color'+(i===0?' on':'');el.style.background=c;
+    el.onclick=()=>{curColor=c;erasing=false;cw.querySelectorAll('.color').forEach(x=>x.classList.remove('on'));el.classList.add('on');setTool('brush')};
+    cw.appendChild(el);
+  });
+  const sw=$('sizes');sw.innerHTML='';
+  SIZES.forEach((s,i)=>{
+    const el=document.createElement('div');el.className='size-dot'+(i===1?' on':'');el.style.width=el.style.height=(s+6)+'px';
+    el.onclick=()=>{curSize=s;sw.querySelectorAll('.size-dot').forEach(x=>x.classList.remove('on'));el.classList.add('on')};
+    sw.appendChild(el);
+  });
+  $('t-brush').onclick=()=>setTool('brush');
+  $('t-eraser').onclick=()=>setTool('eraser');
+  $('t-undo').onclick=undo;
+  $('t-clear').onclick=()=>{saveUndo();clearCanvas()};
+  setTool('brush');
+}
+function setTool(t){erasing=(t==='eraser');$('t-brush').classList.toggle('on',!erasing);$('t-eraser').classList.toggle('on',erasing)}
+
+/* secret word toggle */
+$('secret-eye').onclick=()=>$('secret').classList.toggle('hidden');
+
+/* controls */
+$('btn-skip').onclick=()=>{if(roundActive){twitchSay('⏭ Слово пропущено: '+curWord.toUpperCase());endRound(false)}};
+$('btn-reset').onclick=()=>{if(confirm('Сбросить игру и вернуться в меню?')){if(ws)ws.close();if(timer)clearInterval(timer);location.reload()}};
+
+/* ── IRC ── */
+const BOT_OAUTH='oauth:k1yo3m9jhf89h5fasdu16c5pzkety5';
+const BOT_NICK='ishakgetsbanned';
+let roomId=null;
+function twitchSay(msg){if(ws&&channel&&ws.readyState===1)ws.send('PRIVMSG #'+channel+' :'+msg)}
+function twitchReply(user,msg){twitchSay('@'+user+' '+msg)}
+
+function connectChat(ch){
+  try{ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443')}catch{return}
+  ws.onopen=()=>{
+    ws.send('CAP REQ :twitch.tv/tags');
+    ws.send('PASS '+BOT_OAUTH);
+    ws.send('NICK '+BOT_NICK);
+    ws.send('JOIN #'+ch);
+  };
+  ws.onmessage=ev=>{
+    for(const line of ev.data.trim().split('\r\n')){
+      if(line.startsWith('PING')){ws.send('PONG :tmi.twitch.tv');continue}
+      if(line.includes('ROOMSTATE')&&!roomId){const m=line.match(/room-id=(\d+)/);if(m){roomId=m[1];load7TVChannel(roomId);loadBTTVChannel(roomId);loadFFZChannel(roomId)}}
+      if(line.includes('PRIVMSG')){
+        const msg=parseMsg(line);
+        if(msg&&msg.userLower!=='ishakgetsbanned')handleGuess(msg.username,msg.text,msg.color);
+      }
+    }
+  };
+}
+function parseMsg(line){
+  let tags={},rest=line;
+  if(line.startsWith('@')){const sp=line.indexOf(' ');line.substring(1,sp).split(';').forEach(t=>{const p=t.indexOf('=');if(p>0)tags[t.substring(0,p)]=t.substring(p+1)});rest=line.substring(sp+1)}
+  const pi=rest.indexOf('PRIVMSG');if(pi===-1)return null;
+  const ci=rest.indexOf(' :',pi);if(ci===-1)return null;
+  const text=rest.substring(ci+2).trim();if(!text)return null;
+  return{username:tags['display-name']||'Anon',userLower:(tags['display-name']||'anon').toLowerCase(),text,color:tags['color']||'#ec4899'};
+}
+
+/* ── Emotes ── */
+let emoteMap={};
+async function load7TVGlobal(){try{const r=await fetch('https://7tv.io/v3/emote-sets/global');const d=await r.json();if(d.emotes)d.emotes.forEach(e=>{emoteMap[e.name]='https://cdn.7tv.app/emote/'+e.id+'/1x.webp'})}catch(e){}}
+async function load7TVChannel(id){try{const r=await fetch('https://7tv.io/v3/users/twitch/'+id);const d=await r.json();if(d.emote_set&&d.emote_set.emotes)d.emote_set.emotes.forEach(e=>{emoteMap[e.name]='https://cdn.7tv.app/emote/'+e.id+'/1x.webp'})}catch(e){}}
+async function loadBTTVGlobal(){try{const r=await fetch('https://api.betterttv.net/3/cached/emotes/global');const d=await r.json();d.forEach(e=>{emoteMap[e.code]='https://cdn.betterttv.net/emote/'+e.id+'/1x'})}catch(e){}}
+async function loadBTTVChannel(id){try{const r=await fetch('https://api.betterttv.net/3/cached/users/twitch/'+id);const d=await r.json();(d.channelEmotes||[]).concat(d.sharedEmotes||[]).forEach(e=>{emoteMap[e.code]='https://cdn.betterttv.net/emote/'+e.id+'/1x'})}catch(e){}}
+async function loadFFZChannel(id){try{const r=await fetch('https://api.frankerfacez.com/v1/room/id/'+id);const d=await r.json();Object.values(d.sets||{}).forEach(s=>{(s.emoticons||[]).forEach(e=>{emoteMap[e.name]=e.urls['1']||e.urls['2']})})}catch(e){}}
+function escHtml(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML}
+function renderEmotes(text){return text.split(' ').map(w=>{if(emoteMap[w])return'<img src="'+emoteMap[w]+'" style="height:1.4em;vertical-align:middle;margin:-2px 1px" alt="'+escHtml(w)+'">';return escHtml(w)}).join(' ')}
+
+/* ── SFX ── */
+const SFX=(function(){
+  let ac=null;
+  function ctx(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();return ac}
+  function play(f,t,d,v){try{const c=ctx(),o=c.createOscillator(),g=c.createGain();o.type=t;o.frequency.setValueAtTime(f,c.currentTime);g.gain.setValueAtTime(v||.25,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+d);o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+d)}catch(e){}}
+  return{
+    correct(){[660,880,1100].forEach((f,i)=>setTimeout(()=>play(f,'sine',.15,.3),i*70))},
+    victory(){[523,659,784,1047].forEach((f,i)=>setTimeout(()=>play(f,'sine',.25,.3),i*110))},
+    timeout(){play(200,'square',.4,.2)},
+    tick(){play(800,'sine',.05,.12)},
+    note(f){play(f,'sine',.3,.3)},
+  }
+})();
+</script>
+</body>
+</html>
