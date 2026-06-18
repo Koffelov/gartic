@@ -22,6 +22,11 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
 .field label{display:block;color:#888;font-size:.75rem;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 .field input,.field select,.field textarea{width:100%;padding:11px 14px;border:2px solid #2a2a2d;border-radius:10px;background:#0e0e10;color:#eee;font-size:.95rem;font-family:inherit;outline:none;resize:vertical}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:#ec4899}
+.manual-toggle{display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;color:#ccc;font-size:.88rem;line-height:1.3}
+.manual-toggle input{width:18px;height:18px;flex:none;accent-color:#ec4899;cursor:pointer}
+#manual-inline{display:none;justify-content:center;align-items:center;gap:8px;margin:4px 0}
+#manual-inline input{padding:9px 14px;border:2px solid #ec4899;border-radius:9px;background:#0e0e10;color:#eee;font-size:1rem;font-family:inherit;outline:none;width:260px}
+#mi-send{cursor:pointer}
 .field-row{display:flex;gap:10px}
 .field-row .field{flex:1}
 .packs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
@@ -155,10 +160,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
       <label>Категории слов</label>
       <div class="packs" id="packs"></div>
     </div>
-    <div class="field">
-      <label>Свои слова (через запятую или с новой строки)</label>
-      <textarea id="s-custom" rows="2" placeholder="мой кот, имя_зрителя, локальный мем..."></textarea>
-    </div>
+    <label class="manual-toggle" for="s-manual">
+      <input type="checkbox" id="s-manual">
+      <span>✍️ Ручной режим — я сам ввожу слово каждый раунд (в отдельном окне)</span>
+    </label>
     <button class="btn btn-main" id="btn-start">Начать игру</button>
   </div>
   <p class="hint">Ты рисуешь загаданное слово на холсте. Зрители пишут догадки в Twitch-чат.<br>Кто первый угадал — получает очки (быстрее = больше).<br><b style="color:#ec4899">Секретное слово показано только тебе — спрячь ту область в OBS!</b></p>
@@ -186,6 +191,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
     <div class="canvas-wrap">
       <div class="canvas-box"><canvas id="draw"></canvas></div>
       <div class="masked" id="masked"></div>
+      <div id="manual-inline">
+        <input id="mi-input" placeholder="Слово для этого раунда" autocomplete="off" spellcheck="false">
+        <button id="mi-send" class="g-btn">Отправить</button>
+      </div>
       <div class="tools">
         <div class="colors" id="colors"></div>
         <div class="tool-sep"></div>
@@ -235,7 +244,7 @@ const PACKS={
 };
 /* паки выбранные по умолчанию (18+ выкл) */
 let selectedPacks=Object.keys(PACKS).filter(p=>p!=='18+ 🔞');
-let customWords=[];
+let manualMode=false;
 
 /* ── STATE ── */
 let ws=null,channel='',rounds=8,roundTime=90;
@@ -256,8 +265,6 @@ Object.keys(PACKS).forEach(p=>{
   packsEl.appendChild(c);
 });
 
-/* restore saved custom words */
-try{const cw=localStorage.getItem('gartic:customwords');if(cw)$('s-custom').value=cw;}catch(e){}
 
 $('btn-start').onclick=startGame;
 $('s-channel').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
@@ -265,28 +272,25 @@ $('s-channel').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
 function startGame(){
   const ch=$('s-channel').value.trim().toLowerCase().replace(/^#/,'');
   if(!ch)return;
-  // свои слова
-  const raw=$('s-custom').value;
-  customWords=raw.split(/[,\n]/).map(w=>w.trim()).filter(Boolean);
-  try{localStorage.setItem('gartic:customwords',raw);}catch(e){}
-  if(!selectedPacks.length&&!customWords.length){alert('Выбери категорию или впиши свои слова');return}
+  manualMode=$('s-manual').checked;
+  if(!manualMode&&!selectedPacks.length){alert('Выбери категорию или включи ручной режим');return}
   channel=ch;
   rounds=Math.max(1,parseInt($('s-rounds').value)||8);
   roundTime=Math.max(20,parseInt($('s-time').value)||90);
   round=0;scores.clear();
-  buildQueue();
+  if(!manualMode)buildQueue();
   $('g-rounds').textContent=rounds;
   showScreen('screen-game');
   initCanvas();buildTools();
   load7TVGlobal();loadBTTVGlobal();
   connectChat(ch);
+  if(manualMode)openPopout(); // окно ввода слова открываем сразу
   nextRound();
 }
 
 function buildQueue(){
   let pool=[];
   selectedPacks.forEach(p=>pool.push(...PACKS[p]));
-  pool.push(...customWords); // свои слова всегда включаются если вписаны
   pool=[...new Set(pool)]; // дедуп
   // shuffle
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
@@ -299,8 +303,40 @@ function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classL
 function nextRound(){
   round++;
   if(round>rounds){finishGame();return}
+  $('g-round').textContent=round;
+  if(manualMode){ awaitManualWord(); return; }
   if(!wordQueue.length)buildQueue();
-  curWord=wordQueue.shift();
+  beginRound(wordQueue.shift());
+}
+
+/* ручной режим: ждём пока ведущий впишет слово (в popout или инлайн) */
+function awaitManualWord(){
+  roundActive=false;
+  if(timer)clearInterval(timer);
+  if(revealTimer)clearInterval(revealTimer);
+  curWord='';
+  $('secret-word').textContent='—';
+  $('masked').textContent='';
+  $('g-timer').textContent='—';
+  $('g-timer').classList.remove('low');
+  // инлайн-поле на главном экране (фолбэк)
+  $('manual-inline').style.display='flex';
+  $('mi-input').value='';
+  // popout-поле (основное) — открываем если закрыли
+  if(!popoutWin||popoutWin.closed)openPopout();
+  renderPopoutInput();
+  try{$('mi-input').focus();}catch(e){}
+}
+
+function submitManualWord(word){
+  word=(word||'').trim();
+  if(!word)return;
+  $('manual-inline').style.display='none';
+  beginRound(word);
+}
+
+function beginRound(word){
+  curWord=word;
   masked=curWord.split('').map(c=>c===' '?' ':'_');
   // reveal order — random positions (letters only)
   revealOrder=curWord.split('').map((c,i)=>c===' '?-1:i).filter(i=>i>=0);
@@ -308,7 +344,7 @@ function nextRound(){
   solvedBy=null;guessCount=0;roundActive=true;
   timeLeft=roundTime;
 
-  $('g-round').textContent=round;
+  $('manual-inline').style.display='none';
   $('secret-word').textContent=curWord.toUpperCase();
   $('guesses').innerHTML='';
   $('guess-count').textContent='0';
@@ -518,11 +554,31 @@ $('secret-eye').onclick=()=>$('secret').classList.toggle('hidden');
 /* ── POPOUT окно слова (для 2-го монитора, вне захвата OBS) ── */
 $('btn-popout').onclick=openPopout;
 function openPopout(){
-  popoutWin=window.open('','gartic_word','width=600,height=380');
+  popoutWin=window.open('','gartic_word','width=600,height=400');
   if(!popoutWin){alert('Разреши всплывающие окна для этого сайта');return}
   popoutWin.document.title='Gartic — секретное слово';
   popoutWin.document.body.style.cssText='margin:0';
-  renderPopout(roundActive?'РИСУЙ ЭТО':'ждём раунд');
+  if(manualMode&&!roundActive)renderPopoutInput();
+  else renderPopout(roundActive?'РИСУЙ ЭТО':'ждём раунд');
+}
+
+/* ручной режим: поле ввода слова прямо в popout-окне */
+function renderPopoutInput(){
+  if(!popoutWin||popoutWin.closed)return;
+  popoutWin.document.body.innerHTML=
+    '<div style="position:fixed;inset:0;background:#0e0e10;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;user-select:none;padding:20px;box-sizing:border-box">'
+    +'<div style="font-size:.9rem;letter-spacing:3px;text-transform:uppercase;color:#a855f7;font-weight:700">Раунд '+round+'/'+rounds+'</div>'
+    +'<div style="font-size:1.3rem;font-weight:800">Впиши слово для раунда</div>'
+    +'<input id="po-input" placeholder="слово..." autocomplete="off" spellcheck="false" style="font-size:2rem;font-weight:800;text-align:center;padding:12px 18px;border-radius:12px;border:2px solid #ec4899;background:#111;color:#fff;outline:none;width:88%;box-sizing:border-box">'
+    +'<button id="po-send" style="font-size:1.2rem;font-weight:800;padding:13px 34px;border:none;border-radius:12px;background:linear-gradient(135deg,#ec4899,#a855f7);color:#fff;cursor:pointer;font-family:inherit">Отправить ▶</button>'
+    +'<div style="position:absolute;bottom:12px;font-size:.7rem;color:#444">это окно — только для тебя. поставь на 2-й монитор</div>'
+    +'</div>';
+  const inp=popoutWin.document.getElementById('po-input');
+  const btn=popoutWin.document.getElementById('po-send');
+  const go=()=>submitManualWord(inp.value);
+  btn.onclick=go;
+  inp.onkeydown=e=>{if(e.key==='Enter')go();};
+  try{inp.focus();}catch(e){}
 }
 function renderPopout(label){
   if(!popoutWin||popoutWin.closed)return;
@@ -540,6 +596,10 @@ function updatePopoutTimer(){
   const el=popoutWin.document.getElementById('po-timer');
   if(el)el.textContent=timeLeft;
 }
+
+/* ручной ввод — инлайн-поле (фолбэк на главном экране) */
+$('mi-send').onclick=()=>submitManualWord($('mi-input').value);
+$('mi-input').addEventListener('keydown',e=>{if(e.key==='Enter')submitManualWord($('mi-input').value)});
 
 /* controls */
 $('btn-skip').onclick=()=>{if(roundActive){twitchSay('⏭ Слово пропущено: '+curWord.toUpperCase());endRound(false)}};
