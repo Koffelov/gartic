@@ -20,8 +20,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
 .card{background:#18181b;border:2px solid #2a2a2d;border-radius:16px;padding:24px;width:100%;max-width:520px;text-align:left}
 .field{margin-bottom:14px}
 .field label{display:block;color:#888;font-size:.75rem;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
-.field input,.field select{width:100%;padding:11px 14px;border:2px solid #2a2a2d;border-radius:10px;background:#0e0e10;color:#eee;font-size:.95rem;font-family:inherit;outline:none}
-.field input:focus,.field select:focus{border-color:#ec4899}
+.field input,.field select,.field textarea{width:100%;padding:11px 14px;border:2px solid #2a2a2d;border-radius:10px;background:#0e0e10;color:#eee;font-size:.95rem;font-family:inherit;outline:none;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#ec4899}
 .field-row{display:flex;gap:10px}
 .field-row .field{flex:1}
 .packs{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
@@ -155,6 +155,10 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
       <label>Категории слов</label>
       <div class="packs" id="packs"></div>
     </div>
+    <div class="field">
+      <label>Свои слова (через запятую или с новой строки)</label>
+      <textarea id="s-custom" rows="2" placeholder="мой кот, имя_зрителя, локальный мем..."></textarea>
+    </div>
     <button class="btn btn-main" id="btn-start">Начать игру</button>
   </div>
   <p class="hint">Ты рисуешь загаданное слово на холсте. Зрители пишут догадки в Twitch-чат.<br>Кто первый угадал — получает очки (быстрее = больше).<br><b style="color:#ec4899">Секретное слово показано только тебе — спрячь ту область в OBS!</b></p>
@@ -172,6 +176,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:#0e0e10;color:#efeff1;m
         <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
       </button>
     </div>
+    <button class="g-btn" id="btn-popout" title="Открыть слово в отдельном окне — поставь на 2-й монитор (вне захвата OBS)"><svg viewBox="0 0 24 24"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>Окно слова</button>
     <div class="g-spacer"></div>
     <button class="g-btn" id="btn-skip"><svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>Пропустить</button>
     <button class="g-btn danger" id="btn-reset"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Сброс</button>
@@ -223,9 +228,14 @@ const PACKS={
   'Животные':['слон','жираф','лев','тигр','медведь','заяц','лиса','волк','панда','обезьяна','пингвин','сова','орёл','акула','кит','осьминог','краб','бабочка','пчела','паук','улитка','черепаха','крокодил','змея','лягушка','ёжик','белка','олень','зебра','кенгуру'],
   'Предметы':['компьютер','наушники','камера','микрофон','гитара','барабан','велосипед','самолёт','поезд','автобус','лодка','топор','молоток','пила','лопата','метла','чемодан','рюкзак','кошелёк','перчатки','шляпа','ботинок','футболка','штаны','кольцо','браслет','зеркало','свеча','фонарик','градусник'],
   'Профессии':['врач','повар','пожарный','полицейский','учитель','пилот','моряк','солдат','строитель','художник','музыкант','клоун','король','рыцарь','пират','космонавт','фокусник','шахтёр','садовник','парикмахер','фотограф','актёр','певец','боксёр','футболист','хоккеист','дворник','почтальон','судья','ниндзя'],
-  'Мемы и игры':['minecraft','among us','стример','донат','чатик','банан','тролль','нуб','читер','босс','лут','скин','краш','лагает','капс','бан','эмодзи','подписка','вебка','мем','рофл','краб','дудос','гриф','спавн','респавн','хедшот','комбо','ачивка','тильт']
+  'Сленг':['кринж','рофл','база','жиза','краш','флекс','хайп','чилл','зашквар','муд','скуф','сигма','вайб','токсик','имба','кек','ор','хейтер','факап','годнота','треш','понт','вписка','движ','дрип','шмот','лук','изи','альфа','ауф'],
+  'Мемы':['скибиди туалет','гигачад','амогус','ждун','доге','пепе','трольфейс','шрек','ктулху','лабубу','грустный кот','мистер бист','дед харольд','наташа и коты','дратути','рикролл','краб рейв','нян кот','стонкс','бонк','кот блин','ленивец','обезьяна с телефоном','медведь с пакетом','биба и боба','распальцовка','пельмень','хагги вагги','сус','доводы'],
+  'Twitch':['донат','рейд','клип','сабка','банан','эмоут','паста','модер','вип','фолловер','чаттер','копиум','монка','кекв','садж','пог','изи','омегалул','пепега','видепип','репортнуть','таймаут','стрик','мерч','алерт','вебка','стример','краб','пушка','нитро'],
+  '18+ 🔞':['презерватив','член','сиськи','жопа','секс','порно','бухло','косяк','стояк','стриптиз','вибратор','бордель','похмелье','блевать','трусы','лифчик','голый','тверк','нюдсы','попа','пьяный','эротика','поцелуй взасос','секс-шоп','фаллос','голая жопа','стрингти','пошлятина']
 };
-let selectedPacks=Object.keys(PACKS);
+/* паки выбранные по умолчанию (18+ выкл) */
+let selectedPacks=Object.keys(PACKS).filter(p=>p!=='18+ 🔞');
+let customWords=[];
 
 /* ── STATE ── */
 let ws=null,channel='',rounds=8,roundTime=90;
@@ -233,16 +243,21 @@ let round=0,curWord='',masked=[],revealOrder=[];
 let timeLeft=0,timer=null,revealTimer=null,roundActive=false;
 let solvedBy=null,scores=new Map(),guessCount=0;
 let wordQueue=[];
+let popoutWin=null;
 const $=id=>document.getElementById(id);
 
 /* build packs UI */
 const packsEl=$('packs');
 Object.keys(PACKS).forEach(p=>{
+  const on=selectedPacks.includes(p);
   const c=document.createElement('div');
-  c.className='pack-chip on';c.textContent=p;
+  c.className='pack-chip'+(on?' on':'');c.textContent=p;
   c.onclick=()=>{c.classList.toggle('on');selectedPacks=[...packsEl.querySelectorAll('.pack-chip.on')].map(x=>x.textContent)};
   packsEl.appendChild(c);
 });
+
+/* restore saved custom words */
+try{const cw=localStorage.getItem('gartic:customwords');if(cw)$('s-custom').value=cw;}catch(e){}
 
 $('btn-start').onclick=startGame;
 $('s-channel').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
@@ -250,7 +265,11 @@ $('s-channel').addEventListener('keydown',e=>{if(e.key==='Enter')startGame()});
 function startGame(){
   const ch=$('s-channel').value.trim().toLowerCase().replace(/^#/,'');
   if(!ch)return;
-  if(!selectedPacks.length){alert('Выбери хотя бы одну категорию');return}
+  // свои слова
+  const raw=$('s-custom').value;
+  customWords=raw.split(/[,\n]/).map(w=>w.trim()).filter(Boolean);
+  try{localStorage.setItem('gartic:customwords',raw);}catch(e){}
+  if(!selectedPacks.length&&!customWords.length){alert('Выбери категорию или впиши свои слова');return}
   channel=ch;
   rounds=Math.max(1,parseInt($('s-rounds').value)||8);
   roundTime=Math.max(20,parseInt($('s-time').value)||90);
@@ -267,6 +286,8 @@ function startGame(){
 function buildQueue(){
   let pool=[];
   selectedPacks.forEach(p=>pool.push(...PACKS[p]));
+  pool.push(...customWords); // свои слова всегда включаются если вписаны
+  pool=[...new Set(pool)]; // дедуп
   // shuffle
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
   wordQueue=pool;
@@ -295,6 +316,7 @@ function nextRound(){
   clearCanvas();
   $('g-timer').textContent=timeLeft;
   $('g-timer').classList.remove('low');
+  renderPopout('РИСУЙ ЭТО');
 
   twitchSay('🎨 Раунд '+round+'/'+rounds+'! Угадывай что я рисую — пиши в чат! ('+curWord.length+' букв, '+roundTime+'с)');
 
@@ -325,6 +347,7 @@ function tick(){
   $('g-timer').textContent=timeLeft;
   if(timeLeft<=10)$('g-timer').classList.add('low');
   if(timeLeft<=10&&timeLeft>0)SFX.tick();
+  updatePopoutTimer();
   if(timeLeft<=0){endRound(false)}
 }
 
@@ -336,6 +359,7 @@ function endRound(solved){
   roundActive=false;
   if(timer)clearInterval(timer);
   if(revealTimer)clearInterval(revealTimer);
+  renderPopout(solved?'УГАДАНО ✓':'ВРЕМЯ ВЫШЛО');
 
   const r=$('result');
   $('r-word').textContent=curWord.toUpperCase();
@@ -490,6 +514,32 @@ function setTool(t){erasing=(t==='eraser');$('t-brush').classList.toggle('on',!e
 
 /* secret word toggle */
 $('secret-eye').onclick=()=>$('secret').classList.toggle('hidden');
+
+/* ── POPOUT окно слова (для 2-го монитора, вне захвата OBS) ── */
+$('btn-popout').onclick=openPopout;
+function openPopout(){
+  popoutWin=window.open('','gartic_word','width=600,height=380');
+  if(!popoutWin){alert('Разреши всплывающие окна для этого сайта');return}
+  popoutWin.document.title='Gartic — секретное слово';
+  popoutWin.document.body.style.cssText='margin:0';
+  renderPopout(roundActive?'РИСУЙ ЭТО':'ждём раунд');
+}
+function renderPopout(label){
+  if(!popoutWin||popoutWin.closed)return;
+  const w=curWord?curWord.toUpperCase():'—';
+  popoutWin.document.body.innerHTML=
+    '<div style="position:fixed;inset:0;background:#0e0e10;color:#fff;font-family:Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;user-select:none">'
+    +'<div style="font-size:.9rem;letter-spacing:3px;text-transform:uppercase;color:#a855f7;font-weight:700">'+label+'</div>'
+    +'<div style="font-size:clamp(2.5rem,12vw,6rem);font-weight:900;line-height:1;background:linear-gradient(135deg,#ec4899,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;padding:0 16px;word-break:break-word">'+w+'</div>'
+    +'<div style="font-size:1rem;color:#666">Раунд '+round+'/'+rounds+' · <span id="po-timer">'+timeLeft+'</span>с · '+curWord.length+' симв.</div>'
+    +'<div style="position:absolute;bottom:12px;font-size:.7rem;color:#444">это окно — только для тебя. поставь на 2-й монитор</div>'
+    +'</div>';
+}
+function updatePopoutTimer(){
+  if(!popoutWin||popoutWin.closed)return;
+  const el=popoutWin.document.getElementById('po-timer');
+  if(el)el.textContent=timeLeft;
+}
 
 /* controls */
 $('btn-skip').onclick=()=>{if(roundActive){twitchSay('⏭ Слово пропущено: '+curWord.toUpperCase());endRound(false)}};
